@@ -1,0 +1,88 @@
+name: 更新预测报告
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mox/**"
+      - ".github/workflows/update-report.yml"
+  schedule:
+    # UTC 23:00 = 北京时间次日 07:00
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-report
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: mox/requirements.txt
+
+      - name: 安装依赖
+        run: pip install -r mox/requirements.txt
+
+      - name: 采集数据 · 训练 ARIMA · 生成报告
+        working-directory: mox
+        env:
+          # 否则 Python 块缓冲 stdout，日志里所有时间戳都会堆在进程退出那一刻，
+          # 各阶段耗时完全看不出来
+          PYTHONUNBUFFERED: "1"
+        run: python run_predict.py
+
+      - name: 展示预测结果概要
+        working-directory: mox
+        run: |
+          python - <<'PY'
+          import json
+          s = json.load(open("model_outputs/training_summary.json", encoding="utf-8"))
+          r = json.load(open("model_outputs/arima_results.json", encoding="utf-8"))
+          sample = r["北京"] if "北京" in r else next(iter(r.values()))
+          with open(__import__("os").environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("## 预测报告已更新\n\n")
+              f.write(f"- 城市数：{s['total_cities']}（成功 {s['success']}）\n")
+              f.write(f"- 平均 MAE：{s['avg_mae']} °C\n")
+              f.write(f"- MAE ≤ 2°C 占比：{s['pct_mae_le_2']}%\n")
+              f.write(f"- 示例（{sample['city']}）预测日期：{', '.join(sample['forecast']['dates'])}\n")
+          PY
+
+      - name: 提交并推送
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "数据无变化，跳过提交"
+            exit 0
+          fi
+
+          STAMP=$(TZ=Asia/Shanghai date '+%Y-%m-%d')
+          MSG="chore: 自动更新预测数据 (${STAMP}) [skip ci]"
+
+          # 若 HEAD 已是上一次的自动更新提交，就覆盖它。
+          # 否则每天会新增一个 ~20MB 的数据提交，仓库很快被撑爆。
+          if git log -1 --pretty=%s | grep -q '^chore: 自动更新预测数据'; then
+            git commit --amend -m "$MSG"
+            echo "已覆盖上一次数据提交（仓库体积保持不变）"
+          else
+            git commit -m "$MSG"
+            echo "已创建新的数据提交"
+          fi
+
+          git push --force origin HEAD:main
