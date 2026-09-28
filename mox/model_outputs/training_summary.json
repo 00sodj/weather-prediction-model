@@ -1,0 +1,14 @@
+{
+  "total_cities": 337,
+  "success": 337,
+  "avg_mae": 1.2398,
+  "median_mae": 1.2041,
+  "pct_mae_le_2": 92.9,
+  "mae_distribution": {
+    "le_1": 93,
+    "le_1.5": 260,
+    "le_2": 313,
+    "le_3": 337,
+    "gt_3": 0
+  }
+}
