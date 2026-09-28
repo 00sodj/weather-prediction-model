@@ -1,0 +1,13 @@
+# .bat / .cmd 必须原样存储为 CRLF
+#
+# cmd.exe 解析批处理时按字节偏移定位每一条命令。如果文件是 LF-only，
+# 偏移就会错位，把命令切成 'el' / 'cho' / 'quirements.txt' 这种碎片，
+# 全窗口刷 "[X 不是内部或外部命令]"。
+#
+# 为什么用 -text 而不是 text eol=crlf：
+#   core.autocrlf=true 的环境下，text 属性会在提交时把 CRLF 转成 LF 存进
+#   仓库；GitHub 下载 ZIP 是直接打包仓库里的 blob、不套用 .gitattributes，
+#   于是用户拿到的还是 LF。只有 -text（当作二进制、不做任何转换）能保证
+#   blob 本身就是 CRLF。
+*.bat -text
+*.cmd -text

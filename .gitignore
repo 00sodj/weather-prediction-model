@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 编辑器 / 系统
+.cursor/
+.idea/
+.vscode/
+.workbuddy/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.log
+*.tmp
+~$*
+
+# 课程报告 / 个人材料（仅本地保留，不上传）
+天气预测模型课程设计报告-*
+天气预测模型课程设计汇报-*
+课设封面-*
+*课程设计选题表*
+
+# 报告截图（仅本地保留，仓库只保留系统架构图）
+/*.png
+!/系统架构图.png
